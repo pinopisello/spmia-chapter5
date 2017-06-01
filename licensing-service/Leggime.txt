@@ -1,0 +1,13 @@
+Come licensing-service_chapter4 ma con Hystrix che protegge le chiamate a servizi esterni.
+
+Gli ingredienti sono:
+
+1)aggiunta Hystrix jars nel pom.xml [spring-cloud-starter-hystrix]
+
+2)aggiunta @EnableCircuitBreaker in Application.java
+
+3)
+
+
+
+

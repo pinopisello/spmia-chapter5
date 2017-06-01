@@ -1,0 +1,29 @@
+@EnableCircuitBreaker => @Import(EnableCircuitBreakerImportSelector.class) => extends SpringFactoryImportSelector<EnableCircuitBreaker>
+
+
+A bootstrap:
+																											candidates contiene Application.java bean definition!
+ConfigurationClassPostProcessor.processConfigBeanDefinitions(beanfactory) => ConfigurationClassParser.parse(candidates)
+																													    =>   ConfigurationClassParser.parse(StandardAnnotationMetadata,"application") =>     ConfigurationClassParser.processConfigurationClass(new ConfigurationClass(StandardAnnotationMetadata, "application") => 
+																													 																																																		       ConfigurationClassParser.doProcessConfigurationClass(Application.class, Application.class) => 
+																													 																																																		    																								importCandidates = ConfigurationClassParser.getImports(Application.class) [importCandidates contiene EnableCircuitBreakerImportSelector !!]
+																														     ConfigurationClassParser.processDeferredImportSelectors() =>         ConfigurationClass configClass = deferredImport.getConfigurationClass() [ Application.class]
+																																																  EnableCircuitBreakerImportSelector selector = deferredImport.getImportSelector() 
+																																																  String[] imports = EnableCircuitBreakerImportSelector.selectImports(Application.class.getMetadata())  => List<String> factories = new ArrayList<>(new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(EnableCircuitBreaker.class, this.beanClassLoader))); [cerca in tutti i jars/META-INF/spring.factories per entries org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker. La trova in spring-cloud-netflix-core.jar HystrixCircuitBreakerConfiguration]
+																																																  
+																																																  ConfigurationClassParser.processImports(application.class,HystrixCircuitBreakerConfiguration)	=> 		ConfigurationClassParser.processConfigurationClass(HystrixCircuitBreakerConfiguration)	=> ConfigurationClassParser.doProcessConfigurationClass(HystrixCircuitBreakerConfiguration)	 => processMemberClasses(HystrixCircuitBreakerConfiguration) => registra bean definiti in EurekaDiscoveryClientConfiguration : HystrixMetricsPollerConfiguration,HystrixShutdownHook,HystrixWebConfiguration,HystrixStreamEndpoint
+																																																																				                       											    																																									
+########  HystrixWebConfiguration:   #######
+
+configura HystrixStreamEndpoint ossia HystrixMetricsStreamServlet [/hystrix.stream] per le statistiche hystrix
+
+
+########  HystrixMetricsPollerConfiguration:   #######	
+
+Configura HystrixMetricsPoller e suo thread.
+
+
+	
+	
+HystrixMetricsPollerConfiguration,HystrixShutdownHook,,HystrixStreamEndpoint	
+																																																																				                       											    																																									

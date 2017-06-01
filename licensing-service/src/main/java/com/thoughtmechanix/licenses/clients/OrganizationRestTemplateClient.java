@@ -9,8 +9,9 @@ import org.springframework.web.client.RestTemplate;
 
 @Component
 public class OrganizationRestTemplateClient {
-    @Autowired
-    RestTemplate restTemplate;
+    
+	@Autowired
+    RestTemplate restTemplate;//Definito in Application.java!!
 
     public Organization getOrganization(String organizationId){
         ResponseEntity<Organization> restExchange =

@@ -9,15 +9,19 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
 @SpringBootApplication
-@EnableEurekaClient
+@EnableEurekaClient  
 @EnableCircuitBreaker
 public class Application {
+	
+	//Usato da OrganizationRestTemplateClient , e' gia configurato con tutti endpoints scaricati da eureka server.[Ribbon-backed Spring RestTemplate]
+	//Vedi licensing-service_chapter4/Leggime.txt
     @LoadBalanced
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
+    
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
     }

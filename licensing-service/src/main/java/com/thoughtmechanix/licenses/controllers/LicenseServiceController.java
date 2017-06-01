@@ -21,6 +21,7 @@ import java.util.List;
 @RequestMapping(value="v1/organizations/{organizationId}/licenses")
 public class LicenseServiceController {
     private static final Logger logger = LoggerFactory.getLogger(LicenseServiceController.class);
+    
     @Autowired
     private LicenseService licenseService;
 

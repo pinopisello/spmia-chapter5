@@ -25,7 +25,7 @@ public class LicenseService {
     private LicenseRepository licenseRepository;
 
     @Autowired
-    ServiceConfig config;
+    ServiceConfig config; //contiene property example.property definita config server.
 
     @Autowired
     OrganizationRestTemplateClient organizationRestClient;

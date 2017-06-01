@@ -1,12 +1,15 @@
 spring:
   application:
     name: licensingservice
+  datasource:
+    initialize: false   #runna schema.sql ad ogni boostrap 
   profiles:
-    active:
-      default
+     active: prod        #seleziona quale pro file perscare dal config server
   cloud:
     config:
       enabled: true
 #      discovery:
 #        enabled: true
 #        serviceId: configserver
+server:
+  port: 8081
