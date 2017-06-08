@@ -1,5 +1,15 @@
 package com.thoughtmechanix.licenses.services;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
 import com.thoughtmechanix.licenses.clients.OrganizationRestTemplateClient;
@@ -8,15 +18,6 @@ import com.thoughtmechanix.licenses.model.License;
 import com.thoughtmechanix.licenses.model.Organization;
 import com.thoughtmechanix.licenses.repository.LicenseRepository;
 import com.thoughtmechanix.licenses.utils.UserContextHolder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
 
 @Service
 public class LicenseService {
@@ -30,7 +31,7 @@ public class LicenseService {
     @Autowired
     OrganizationRestTemplateClient organizationRestClient;
 
-
+    @HystrixCommand( threadPoolKey = "licenseByOrgThreadPoolPeppe")
     public License getLicense(String organizationId,String licenseId) {
         License license = licenseRepository.findByOrganizationIdAndLicenseId(organizationId, licenseId);
 
@@ -44,7 +45,7 @@ public class LicenseService {
                 .withComment(config.getExampleProperty());
     }
 
-    @HystrixCommand
+   
     private Organization getOrganization(String organizationId) {
         return organizationRestClient.getOrganization(organizationId);
     }
@@ -52,35 +53,53 @@ public class LicenseService {
     private void randomlyRunLong(){
       Random rand = new Random();
 
-      int randomNum = rand.nextInt((3 - 1) + 1) + 1;
+      int randomNum = rand.nextInt(3) + 1;//ritorna un intero tra 1-3
 
-      if (randomNum==3) sleep();
+      System.out.println("randomNum : "+randomNum);
+      
+      if (randomNum==3)
+    	  try {
+              Thread.sleep(11000);
+          } catch (InterruptedException e) {
+              e.printStackTrace();
+          }
+    	  
     }
-
-    private void sleep(){
-        try {
-            Thread.sleep(11000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    @HystrixCommand(//fallbackMethod = "buildFallbackLicenseList",
-            threadPoolKey = "licenseByOrgThreadPool",
-            threadPoolProperties =
-                    {@HystrixProperty(name = "coreSize",value="30"),
-                     @HystrixProperty(name="maxQueueSize", value="10")},
-            commandProperties={
-                     @HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="10"),
-                     @HystrixProperty(name="circuitBreaker.errorThresholdPercentage", value="75"),
-                     @HystrixProperty(name="circuitBreaker.sleepWindowInMilliseconds", value="7000"),
-                     @HystrixProperty(name="metrics.rollingStats.timeInMilliseconds", value="15000"),
-                     @HystrixProperty(name="metrics.rollingStats.numBuckets", value="5")}
+ 
+    
+    //@HystrixCommand    //caso 1:timeout 1000ms
+    /*@HystrixCommand(   //caso 2 : timeout 12000ms (il metodo ritorna sempre successo)
+    		  commandProperties=
+    		       {@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="12000")}
+    )*/
+    
+    //@HystrixCommand(fallbackMethod = "buildFallbackLicenseList") //caso 3 : fallback metodo in caso eccezzione
+    
+   /* @HystrixCommand(//caso 4: Bulkhead pattern per usare diversi threadpools.
+    threadPoolKey = "licenseByOrgThreadPoolPippo",
+    threadPoolProperties =
+            {@HystrixProperty(name = "coreSize",value="2"),
+             @HystrixProperty(name="maxQueueSize", value="10")},
+            commandProperties=
+	       {@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="12000")}
     )
+    */
+    
+    @HystrixCommand(//caso 5: Bulkhead pattern con commandPoolProperties per configurare il comportamento breaker.
+    	    threadPoolKey = "licenseByOrgThreadPoolPippo",
+    	    threadPoolProperties =
+    	            {@HystrixProperty(name = "coreSize",value="3"),
+    	             @HystrixProperty(name="maxQueueSize", value="10")}
+    	            ,commandProperties=
+    		              { @HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="12000"),
+    		    		    @HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="10"),
+    		    		    @HystrixProperty(name="circuitBreaker.errorThresholdPercentage", value="75"),
+    		    		    @HystrixProperty(name="circuitBreaker.sleepWindowInMilliseconds", value="7000"),
+    		    		    @HystrixProperty(name="metrics.rollingStats.timeInMilliseconds", value="15000"),
+    		    		    @HystrixProperty(name="metrics.rollingStats.numBuckets", value="5")})
     public List<License> getLicensesByOrg(String organizationId){
         logger.debug("LicenseService.getLicensesByOrg  Correlation id: {}", UserContextHolder.getContext().getCorrelationId());
         randomlyRunLong();
-
         return licenseRepository.findByOrganizationId(organizationId);
     }
 

@@ -6,8 +6,96 @@ Gli ingredienti sono:
 
 2)aggiunta @EnableCircuitBreaker in Application.java
 
-3)
+3)annoto @HystrixCommand i metodi che devono essere managed da Hystrix circuit breaker.
+	I metodi annotati cosi, verranno eseguiti in un thread pool creato apposta da hystrix e ogni thread e' monitorato per 
+	verificare che esegua in tempi accettbili.Altrimenti un fallback e' chiamato invece e il cicuit breaker e' aperto.
+	
+	Vedi LicenseService.getLicensesByOrg() come esempio.
 
+
+#################	LicenseServiceController (@HystrixCommand)	################
+
+Metodo di interesse:
+getLicenses(String organizationId)  => http://localhost:8081/v1/organizations/442adb6e-fa58-47f3-9ca2-ed1fecdfe86c/licenses/
+
+Annotato  @HystrixCommand ha un random delay [randomlyRunLong()] che serve a vedere le varie funzionalita' @HystrixCommand.
+
+randomlyRunLong() genera uno sleep 0 o 11000ms!!1 probabilita' su 3 che ci sia sleep...
+
+1)@HystrixCommand vaniglia
+Di default il timeout e' 1000ms.
+Ergo dipendentemente da quanto randomlyRunLong() dorme, ci sara' sucesso o eccezzione.
+
+2)Settare histrix timeout
+
+@HystrixCommand (commandProperties={@HystrixProperty(name="execution.isolation.thread.timeoutInMilliseconds", value="12000")})
+Histrix attende piu di randomlyRunLong() quindi sempre successo.
+
+3)Settare fallback method
+
+@HystrixCommand(fallbackMethod = "buildFallbackLicenseList")
+In caso timeout ,   buildFallbackLicenseList viene invocato.
+
+4)Bulkhead pattern per usare diversi threadpools.
+
+Di default, sensa specificare nulla in @HystrixCommand, il thread che sesgue il metodo annotato e' in un pool di 10 threads usato da hystrix come staandard pool.
+Se uno dei hystrix methods ha problemi o ha grossi volumi, tale pool puo' esaurirsi e tutti gli altri metodi verrebbero bloccati!!
+
+@HystrixCommand(  threadPoolKey = "licenseByOrgThreadPool",            //identifica il pool che deve eseguire il metodo
+                     threadPoolProperties =
+                    {@HystrixProperty(name = "coreSize",value="30"),   //dimensione pool
+                     @HystrixProperty(name="maxQueueSize", value="10")}//dimensione queue davanti at thread pool.Quando il pool e' esaurito, tutte incoming requests sono queued qui in attesa di un thread libero.
+                )
+
+
+5)Bulkhead pattern con commandPoolProperties per configurare il comportamento breaker.
+
+@HystrixProperty(name="circuitBreaker.requestVolumeThreshold", value="10")          numero minimo di request dentro metrics.rollingStats.timeInMilliseconds perche hystrix considery di trippare
+@HystrixProperty(name="metrics.rollingStats.timeInMilliseconds", value="15000")     finestra dal primo errore che Hystrix usa per decidere di trippare
+@HystrixProperty(name="circuitBreaker.errorThresholdPercentage", value="75")        % errori in metrics.rollingStats.timeInMilliseconds per trippare
+@HystrixProperty(name="circuitBreaker.sleepWindowInMilliseconds", value="7000")     tempo da quando trippato alla prima equest che e' tentata
+@HystrixProperty(name="metrics.rollingStats.numBuckets", value="5")                 # volte in rollingStats.timeInMilliseconds statistiche sono calcolate            
+
+
+
+####################  	HystrixConcurrencyStrategy: come propagare thread context negli Hystrix thread poll		 ###########################
+
+Quando un tomcat thread invoca un metodo @HystrixCommand, il codice del command e' esuguito in un diverso thread!!
+Quindi ogni Threadlocal definito nel calling thread viene perso.
+
+Per esempio  UserContextFilter legge header "tmx-correlation-id" dalle request e assegna una variabile ThreadLocal UserContext che contiene tale valore.
+
+Invoco  http://localhost:8081/v1/organizations/442adb6e-fa58-47f3-9ca2-ed1fecdfe86c/licenses/ passando header "tmx-correlation-id:34" e loggo tale valore in:
+
+LicenseServiceController.getLicenses() => ok, trovato
+
+LicenseService.getLicensesByOrg() => perso!!Dato che il thread ora e' un hystrix e non ha ricevuto UserContext dal calling thread!!
+
+Come risolvo?Come propago thread context nei thread hystrix?
+
+In ThreadLocalConfiguration.java,  definisco mio ThreadLocalAwareStrategy che estende HystrixConcurrencyStrategy e viene istanziato usando existingConcurrencyStrategy gia' definito da hystrix.
+In particolare faccio override del metodo wrapCallable(callable) dove:
+
+ super.wrapCallable(new DelegatingUserContextCallable<T>(callable, UserContextHolder.getContext()));
+ 
+ wrappa il callable originale in un DelegatingUserContextCallable che stora sia il callable che una copia del UserContext associato al thread da UserContextFilter PRIMA che callable sia eseguito in hystrix thread.
+ 
+Quando DelegatingUserContextCallable.call() e' chiamato dall hystrix thread, UserContext viene iniettato nel UserContextHolder.threadLocalUserContext cosi il LicenseService.getLicensesByOrg() trova  UserContext
+quando invoca UserContextHolder.getContext().getCorrelationId().
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+  
+
+                  
 
 
 

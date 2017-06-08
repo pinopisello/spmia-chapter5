@@ -4,22 +4,22 @@ package com.thoughtmechanix.licenses.utils;
 import org.springframework.util.Assert;
 
 public class UserContextHolder {
-    private static final ThreadLocal<UserContext> userContext = new ThreadLocal<UserContext>();
+    private static final ThreadLocal<UserContext> threadLocalUserContext = new ThreadLocal<UserContext>();
 
     public static final UserContext getContext(){
-        UserContext context = userContext.get();
+        UserContext context = threadLocalUserContext.get();
 
         if (context == null) {
             context = createEmptyContext();
-            userContext.set(context);
+            threadLocalUserContext.set(context);
 
         }
-        return userContext.get();
+        return threadLocalUserContext.get();
     }
 
     public static final void setContext(UserContext context) {
         Assert.notNull(context, "Only non-null UserContext instances are permitted");
-        userContext.set(context);
+        threadLocalUserContext.set(context);
     }
 
     public static final UserContext createEmptyContext(){

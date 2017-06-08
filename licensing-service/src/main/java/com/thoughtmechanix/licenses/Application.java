@@ -15,6 +15,10 @@ public class Application {
 	
 	//Usato da OrganizationRestTemplateClient , e' gia configurato con tutti endpoints scaricati da eureka server.[Ribbon-backed Spring RestTemplate]
 	//Vedi licensing-service_chapter4/Leggime.txt
+	//ATTENZIONE a @LoadBalanced!!
+	//Questa annotazione permette la risoluzione "organizationservice" =>  10.195.171.96:8080/v1/organizations grazie a LoadBalancerInterceptor.    
+	//@EnableEurekaClient abilita Ribbon intercepton nelle istanze  RestTemplate managed da Spring!!
+
     @LoadBalanced
     @Bean
     public RestTemplate restTemplate() {
